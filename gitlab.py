@@ -3,23 +3,19 @@ import urllib.request
 import slack
 from datetime import datetime
 
-SLACK_TOKEN = "xoxb-982408464804-1022666434166-n1nL5VKSnf7y5jjF4eCldyzc"
-SLACK_CHANNEL = "testing"
+# dr
+SLACK_TOKEN = "<slack token>"
 
-# SLACK_TOKEN = "xoxb-3455196592-1024244378391-DumK7c18gvDTHFrbN451eoEu"
-# SLACK_CHANNEL = "bot-test"
+GITLAB_HOST = "<gitlab host>"
+GITLAB_TOKEN = "<gitlab token>"
 
-GITLAB_TOKEN = "xccu1ekNJrMHR1GP-9L9"
-PROJECT_URL = "https://gitlab.bouncex.net/api/v4/projects/{id}?private_token={gitlabToken}"
-MR_URL = "https://gitlab.bouncex.net/api/v4/projects/{id}/merge_requests?state=opened&wip=no&order_by=updated_at&private_token={gitlabToken}"
+GROUP_URL = "https://{gitlab_host}/api/v4/groups/{id}?private_token={token}"
+MR_PARAMS = "state=opened&wip=no&order_by=updated_at"
 
-groups = {17: []}
+# the token being used must originate from a user who has permissions to the specified groups
+# if a whitelist, then only those are considered, otherwise all in the group
+configs = [{"group_id": 17, "channels": ["testing"]}]
 now = datetime.utcnow()
-
-
-def test():
-    for k,v in groups.items():
-        print(f"{k}-{v}")
 
 
 def ellipsify(str, maxl):
@@ -30,6 +26,7 @@ def ellipsify(str, maxl):
 
 
 def get_json(url):
+    print(url)
     req = urllib.request.Request(url)
     response = urllib.request.urlopen(req)
     data = response.read().decode('utf-8')
@@ -39,41 +36,49 @@ def get_json(url):
 def format_mr(v):
     updated = datetime.strptime(v['updated_at'], "%Y-%m-%dT%H:%M:%S.%fZ")
     days_ago = (now - updated).days
-    return "<{url}|{title}>\n{author} - _last updated {updatedDays} ago_".format(
+    return "<{url}|{title}>\n{author} - _last updated {updatedDays} ago_\n\n".format(
         title=ellipsify(v['title'], 75).ljust(55, ' '),
         author=v["author"]["name"],
         url=v["web_url"],
         updatedDays=f"{days_ago} days" if days_ago > 0 else "less than 1 day")
 
 
+def format_mrs(mrs):
+    str = ""
+    for v in mrs:
+        str += format_mr(v)
+    return str
+
+
 def main():
-    blocks = [{"type": "section",
-               "text": {"type": "mrkdwn", "text": "_Hot, non WIP MRs in your area, waiting to get reviewed_ :lips:"}}]
-    for id in groups:
-        project = PROJECT_URL.format(id=id, gitlabToken=GITLAB_TOKEN)
-
-        mrs = MR_URL.format(id=id, gitlabToken=GITLAB_TOKEN)
-
-        blocks.append(
-            {"type": "section", "text": {"type": "mrkdwn", "text": "\n*{name}*".format(name=get_json(project)['name'])}})
-        blocks.append({"type": "divider"})
-
-        ready_to_review = [j for j in get_json(mrs) if not j["work_in_progress"]]
-
-        if len(ready_to_review) != 0:
-            for v in ready_to_review:
-                blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": format_mr(v)}})
-        else:
-            blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": "No MRs"}})
-
     client = slack.WebClient(token=SLACK_TOKEN)
+    for c in configs:
+        group = get_json(GROUP_URL.format(id=c["group_id"], gitlab_host=GITLAB_HOST, token=GITLAB_TOKEN))
+        blocks = [{"type": "section",
+                   "text": {"type": "mrkdwn",
+                            "text": "_Hot, non WIP MRs in {group_name}, waiting to get reviewed_ :lips:".format(
+                                group_name=group["name"])}}]
+        for project in [p for p in sorted(group["projects"], key=lambda p: p["name"].lower()) if
+                        "whitelist" not in c or p["id"] in c["whitelist"]]:
+            mrs = get_json(
+                "{mr_url}?private_token={token}&{mr_params}".format(mr_url=project["_links"]["merge_requests"],
+                                                                    mr_params=MR_PARAMS, token=GITLAB_TOKEN))
+            ready_to_review = [j for j in mrs if not j["work_in_progress"]]
 
-    # testing
-    if 1 == 1:
-        client.chat_postMessage(
-            channel=SLACK_CHANNEL,
-            blocks=blocks
-        )
+            if len(ready_to_review) != 0:
+                blocks.append(
+                    {"type": "section", "text": {"type": "mrkdwn", "text": "*{name}*\n\n{formatted_mrs}".format(
+                        name=project['name'], formatted_mrs=format_mrs(ready_to_review))}})
+                blocks.append({"type": "divider"})
+
+        # testing
+        if 1 == 1:
+            for ch in c["channels"]:
+                print("slacking ...")
+                client.chat_postMessage(
+                    channel=ch,
+                    blocks=blocks
+                )
 
 
-test()
+main()
