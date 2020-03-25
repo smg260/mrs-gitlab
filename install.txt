@@ -1,0 +1,22 @@
+sudo apt-get install git
+sudo apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev python-openssl
+
+#isntall pyenv to switch versions
+curl https://pyenv.run | bash
+
+#add to .bashrc
+export PATH="/home/miral_gadani/.pyenv/bin:$PATH"
+eval "$(pyenv init -)"
+eval "$(pyenv virtualenv-init -)"
+
+#TAKES A LONG TIME SINCE ITS COMPILING PYTHON
+pyenv install -v 3.8.2
+
+
+#sets current SDK
+pyenv global 3.8.2
+
+#FOR CRONTAB -> shims is where pyenv installed python
+
+0 11 * * 1-5 /home/miral_gadani/.pyenv/shims/python /home/miral_gadani/gitlab/Sandpit/gitlab.py
+
