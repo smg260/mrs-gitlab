@@ -3,23 +3,17 @@ import urllib.request
 import slack
 from datetime import datetime
 
-SLACK_TOKEN = "xoxb-982408464804-1022666434166-n1nL5VKSnf7y5jjF4eCldyzc"
-SLACK_CHANNEL = "testing"
+SLACK_TOKEN = "<token>"
+SLACK_CHANNEL = "<channel>"
 
-# SLACK_TOKEN = "xoxb-3455196592-1024244378391-DumK7c18gvDTHFrbN451eoEu"
-# SLACK_CHANNEL = "bot-test"
+GITLAB_TOKEN = "<gitlab token>"
+PROJECT_URL = "https://<your_host_here>/api/v4/projects/{id}?private_token={gitlabToken}"
+MR_URL = "https://<your_host_here>/api/v4/projects/{id}/merge_requests?state=opened&wip=no&order_by=updated_at&private_token={gitlabToken}"
 
-GITLAB_TOKEN = "xccu1ekNJrMHR1GP-9L9"
-PROJECT_URL = "https://gitlab.bouncex.net/api/v4/projects/{id}?private_token={gitlabToken}"
-MR_URL = "https://gitlab.bouncex.net/api/v4/projects/{id}/merge_requests?state=opened&wip=no&order_by=updated_at&private_token={gitlabToken}"
-
-groups = {17: []}
+#from gitlab
+groups = [87, 256, 26, 25, 45]
+groups.sort()
 now = datetime.utcnow()
-
-
-def test():
-    for k,v in groups.items():
-        print(f"{k}-{v}")
 
 
 def ellipsify(str, maxl):
@@ -76,4 +70,4 @@ def main():
         )
 
 
-test()
+main()
